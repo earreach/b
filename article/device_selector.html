@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备型号选择器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s ease;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+        }
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .form-group select:disabled {
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        option:disabled {
+            color: #888;
+            background-color: #f8f9fa;
+            font-style: italic;
+            text-align: center;
+        }
+        #result {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+        }
+        .result-header {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .device-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .device-info p {
+            margin: 12px 0;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .device-info strong {
+            color: #333;
+            display: inline-block;
+            width: 80px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 16px;
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #c33;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+                align-items: flex-start;
+            }
+            .container {
+                padding: 20px;
+                border-radius: 15px;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 设备型号选择器</h1>
+            <p>选择设备类别和具体型号查询信息</p>
+        </div>
+
+        <div class="form-group">
+            <label for="category">🎯 设备类别</label>
+            <select id="category" name="category" disabled>
+                <option value="">加载设备数据中...</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="model">🔧 设备型号</label>
+            <select id="model" name="model" disabled>
+                <option value="">请先选择设备类别</option>
+            </select>
+        </div>
+        
+        <button id="submit-btn" class="submit-btn" type="button" disabled>
+            查询设备信息
+        </button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // 设备数据变量
+        let deviceData = [];
+        let dataLoaded = false;
+
+        // 加载设备数据
+        function loadDeviceData() {
+            console.log('开始加载设备数据...');
+            
+            // 使用相对路径 - 因为文件在同一个目录
+            fetch('get_device_data.php')
+                .then(response => {
+                    console.log('响应状态:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('成功获取数据:', data);
+                    console.log('数据长度:', data.length);
+                    
+                    if (data && Array.isArray(data) && data.length > 0) {
+                        deviceData = data;
+                        dataLoaded = true;
+                        initCategorySelect();
+                    } else {
+                        throw new Error('返回的数据为空或格式不正确');
+                    }
+                })
+                .catch(error => {
+                    console.error('数据加载失败:', error);
+                    document.getElementById('category').innerHTML = '<option value="">数据加载失败，请刷新页面</option>';
+                    document.getElementById('category').disabled = false;
+                });
+        }
+
+        // 初始化类别下拉框
+        function initCategorySelect() {
+            const categorySelect = document.getElementById('category');
+            categorySelect.innerHTML = '<option value="">请选择设备类别</option>';
+            
+            deviceData.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item[0];
+                option.textContent = getBrandEmoji(item[0]) + ' ' + item[0];
+                categorySelect.appendChild(option);
+            });
+            
+            categorySelect.disabled = false;
+            console.log('类别选择框初始化完成');
+        }
+
+        // 获取品牌emoji图标
+        function getBrandEmoji(brand) {
+            const emojiMap = {
+                'iphone': '📱',
+                'ipad': '💻', 
+                'iwatch': '⌚',
+                'ipod': '🎵',
+                'Galaxy': '🌟',
+                'SONY': '🔊',
+                'Google': '🔍',
+                'SHARP': '📺',
+                'OPPO': '📸',
+                'Xiaomi': '🌾',
+                'HUAWEI': '🇨🇳',
+                'ASUS': '⚡',
+                'Fujitsu': '💼',
+                'LG': '🖥️',
+                'Motorola': '🦅',
+                'ZTE': '📶',
+                'HTC': '📞',
+                'Switch': '🎮',
+                'Surface': '💻',
+                'ガラケー': '📟'
+            };
+            return emojiMap[brand] || '📋';
+        }
+
+        // 更新型号下拉框
+        function updateModelSelect(categoryValue) {
+            if (!dataLoaded) {
+                alert('数据尚未加载完成，请稍后...');
+                return;
+            }
+            
+            const modelSelect = document.getElementById('model');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            modelSelect.innerHTML = '';
+            modelSelect.disabled = true;
+            submitBtn.disabled = true;
+            
+            if (!categoryValue) {
+                modelSelect.innerHTML = '<option value="">请先选择设备类别</option>';
+                modelSelect.disabled = false;
+                return;
+            }
+            
+            const category = deviceData.find(item => item[0] === categoryValue);
+            if (!category) {
+                console.error('未找到类别:', categoryValue);
+                return;
+            }
+            
+            const models = category[1];
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '请选择具体型号';
+            modelSelect.appendChild(defaultOption);
+            
+            models.forEach(modelGroup => {
+                const groupOption = document.createElement('option');
+                groupOption.value = '';
+                groupOption.textContent = `── ${modelGroup[0]} ──`;
+                groupOption.disabled = true;
+                modelSelect.appendChild(groupOption);
+                
+                modelGroup[1].forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    modelSelect.appendChild(option);
+                });
+            });
+            
+            modelSelect.disabled = false;
+            console.log('型号选择框更新完成');
+        }
+
+        // 提交查询
+        function submitQuery() {
+            if (!dataLoaded) {
+                alert('数据尚未加载完成，请稍后重试');
+                return;
+            }
+            
+            const category = document.getElementById('category').value;
+            const model = document.getElementById('model').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!category || !model) {
+                alert('请选择完整的设备信息');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">🔍 查询中，请稍候...</div>';
+            
+            // 防止重复点击
+            document.getElementById('submit-btn').disabled = true;
+            
+            // 模拟查询结果（实际使用时替换为真实的AJAX请求）
+            setTimeout(() => {
+                const mockData = {
+                    price: '￥' + (Math.random() * 10000 + 1000).toFixed(0),
+                    stock: Math.floor(Math.random() * 100),
+                    description: '这是 ' + model + ' 的详细信息描述'
+                };
+                
+                displayResult(mockData, category, model);
+                document.getElementById('submit-btn').disabled = false;
+            }, 1500);
+        }
+
+        // 显示查询结果
+        function displayResult(data, category, model) {
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = `
+                <div class="result-header">
+                    <span>📋 查询结果</span>
+                </div>
+                <div class="device-info">
+                    <p><strong>设备类别:</strong> ${category}</p>
+                    <p><strong>具体型号:</strong> ${model}</p>
+                    <p><strong>💰 参考价格:</strong> ${data.price}</p>
+                    <p><strong>📦 模拟库存:</strong> ${data.stock} 台</p>
+                    <p><strong>📝 产品描述:</strong> ${data.description}</p>
+                    <p><em>💡 提示: 这是模拟数据，实际使用时连接数据库获取真实信息</em></p>
+                </div>
+            `;
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始加载设备数据...');
+            loadDeviceData();
+            
+            // 事件监听
+            document.getElementById('category').addEventListener('change', function() {
+                updateModelSelect(this.value);
+            });
+            
+            document.getElementById('model').addEventListener('change', function() {
+                document.getElementById('submit-btn').disabled = !this.value;
+            });
+            
+            document.getElementById('submit-btn').addEventListener('click', submitQuery);
+        });
+
+        // 调试函数 - 在控制台输入 checkData() 查看数据状态
+        window.checkData = function() {
+            console.log('=== 数据状态检查 ===');
+            console.log('deviceData:', deviceData);
+            console.log('dataLoaded:', dataLoaded);
+            console.log('数据长度:', deviceData.length);
+            console.log('第一个品牌:', deviceData[0] ? deviceData[0][0] : '无');
+        };
+    </script>
+</body>
+</html>
